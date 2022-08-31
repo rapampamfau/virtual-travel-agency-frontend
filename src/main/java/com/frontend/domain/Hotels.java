@@ -1,5 +1,10 @@
 package com.frontend.domain;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public final class Hotels {
 
     private final String name;

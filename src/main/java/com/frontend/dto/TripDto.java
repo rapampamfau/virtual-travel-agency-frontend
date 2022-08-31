@@ -7,7 +7,6 @@ import java.time.LocalDate;
 
 @Getter
 @Builder
-@ToString
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
@@ -18,5 +17,7 @@ public class TripDto {
     private LocalDate departureDate;
     private String airlineName;
     private String hotelName;
+    private String carName;
     private Double summaryPrice;
+    private String forecastedAverageTemperature;
 }

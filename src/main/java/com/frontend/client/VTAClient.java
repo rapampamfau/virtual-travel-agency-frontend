@@ -1,13 +1,13 @@
 package com.frontend.client;
 
+import com.frontend.domain.CarInfo;
 import com.frontend.domain.Flights;
 import com.frontend.domain.Hotels;
 import com.frontend.dto.TripDto;
 import com.frontend.skyscanner.flights.dto.Item;
-import com.frontend.skyscanner.hotels.dto.HotelRoomsRoot;
+import com.frontend.skyscanner.hotels.dto.Hotel;
+import com.frontend.skyscanner.rental.car.dto.CarRentInfo;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -21,8 +21,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class VTAClient {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(VTAClient.class);
     private final RestTemplate restTemplate;
+
+    public Double getForecastAverageTemperature(String location) {
+        String url = "http://localhost:8888/v1/weather/forecast/" + location + "/temperature/";
+        return restTemplate.getForEntity(url, Double.class).getBody();
+    }
 
     public List<Flights> getBestFlights(int adultsNumber, String departure, String destination, String departureDate) {
         String url = "http://localhost:8888/v1/flights/searchBestFlights/" + adultsNumber + "/" + departure + "/" + destination + "/" + departureDate;
@@ -53,33 +57,56 @@ public class VTAClient {
                         .build())
 
                 .collect(Collectors.toList());
-
-//        System.out.println(flights);
-//        System.out.println(response.getBody().toString());
         return flights;
+    }
+
+    public List<CarInfo> getCars(String pickupId, String pickUpdate, String returnDate) {
+        String url = "http://localhost:8888/v1/rental/cars/searchAll/" + pickupId + "/" + pickUpdate  + "/10:00/" + returnDate +  "/10:00";
+        ResponseEntity<CarRentInfo[]> response = restTemplate.getForEntity(url, CarRentInfo[].class);
+        List<CarInfo> carInfo =  Arrays.stream(Objects.requireNonNull(response.getBody()))
+                .map(info -> new CarInfo.CarInfoBuilder()
+                        .carName(info.getCar_name())
+                        .price(String.valueOf(info.getPrice()).split("\\.")[0] + " €")
+                        .build())
+                .collect(Collectors.toList());
+        return carInfo;
     }
 
     public List<Hotels> getHotels(String locationId, int adultsNumber, int roomsNumber, String checkin, String checkout) {
         String url = "http://localhost:8888/v1/hotels/" + locationId + "/" + adultsNumber + "/" + roomsNumber + "/" + checkin + "/" + checkout;
-        ResponseEntity<HotelRoomsRoot> response = restTemplate.getForEntity(url, HotelRoomsRoot.class);
-        List<Hotels> hotels = Objects.requireNonNull(response.getBody()).getHotels().stream()
+        ResponseEntity<Hotel[]> response = restTemplate.getForEntity(url, Hotel[].class);
+        List<Hotels> hotels = Objects.requireNonNull(Arrays.asList(response.getBody())).stream()
                 .map(hotel -> new Hotels.HotelsBuilder()
                         .name(hotel.getName())
                         .price(hotel.getPrice())
                         .build())
                 .collect(Collectors.toList());
-
-        if (response.getBody().getContext().getCompletionPercentage() < 100) {
-            LOGGER.info("Hotels fetch incomplete, another try after 15 seconds");
-        } else {
-            LOGGER.info("Hotels fetch complete");
-        }
-
-//        System.out.println(hotels);
-//        System.out.println(response.getBody().toString());
         return hotels;
     }
 
+    public List<Hotels> getHotelsUnderPrice(Integer maxPrice, String locationId, int adultsNumber, int roomsNumber, String checkin, String checkout) {
+        String url = "http://localhost:8888/v1/hotels/searchByMaxPrice/" + maxPrice + "/" + locationId + "/" + adultsNumber + "/" + roomsNumber + "/" + checkin + "/" + checkout;
+        ResponseEntity<Hotel[]> response = restTemplate.getForEntity(url, Hotel[].class);
+        List<Hotels> hotels = Objects.requireNonNull(Arrays.asList(response.getBody())).stream()
+                .map(hotel -> new Hotels.HotelsBuilder()
+                        .name(hotel.getName())
+                        .price(hotel.getPrice())
+                        .build())
+                .collect(Collectors.toList());
+        return hotels;
+    }
+
+    public List<CarInfo> getCarsUnderPrice(Integer maxPrice, String pickupId, String pickUpdate, String returnDate) {
+        String url = "http://localhost:8888/v1/hotels/searchByPrice/" + maxPrice + "/" + pickupId + "/" + pickUpdate + "/" + returnDate;
+        ResponseEntity<CarRentInfo[]> response = restTemplate.getForEntity(url, CarRentInfo[].class);
+        List<CarInfo> cars = Objects.requireNonNull(Arrays.asList(response.getBody())).stream()
+                .map(info -> new CarInfo.CarInfoBuilder()
+                        .carName(info.getCar_name())
+                        .price(String.valueOf(info.getPrice()))
+                        .build())
+                .collect(Collectors.toList());
+        return cars;
+    }
 
     public void saveTrip(TripDto tripDto) {
         String url = "http://localhost:8888/v1/trips";
